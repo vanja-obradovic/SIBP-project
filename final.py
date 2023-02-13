@@ -40,14 +40,14 @@ class data_cleanUp():
         data.loc[(data.Floor > data.HouseFloor),
                  'HouseFloor'] =  data.loc[(data.Floor > data.HouseFloor)].Floor
 
-        #Convert HouseYear to HouseAge
+        # Convert HouseYear to HouseAge
         data.loc[(data.HouseYear > self.current_year),
                  'HouseYear'] = self.current_year-1
         data.insert(data.columns.get_loc('HouseYear'), 'HouseAge',
                     self.current_year - data['HouseYear'])
         data.drop('HouseYear', axis=1, inplace=True)
 
-        # Convert text to numerical
+        # Convert text values to numerical
         data = pd.get_dummies(data, columns=self.cat_columns)
 
         # Fill Healthcare_1 blanks
@@ -67,20 +67,25 @@ class data_cleanUp():
         data.loc[(data.KitchenSquare/data.LifeSquare < 0.05) |
                  (data.KitchenSquare/data.LifeSquare > 0.4), 'KitchenSquare'] = data.loc[(data.KitchenSquare/data.LifeSquare < 0.05) |
                  (data.KitchenSquare/data.LifeSquare > 0.4)].LifeSquare*self.kitchen_lifeSq_ratio.mean()
-        # data.sort_index(inplace=True)
 
+        # Get AvgDistSqmPrice with one help column
         data = data.sort_values(by='DistrictId')
         data.insert(1, 'SqMeterPrice', data['Price']/data['Square'])
         self.average_sqm_price_district = data.groupby(by=['DistrictId'])[
             'SqMeterPrice'].mean().rename('AvgDistSqmPrice', inplace=True)
         data.drop('SqMeterPrice', axis=1, inplace=True)
+
+        # Insert AvgDistSqmPrice and fill blanks in DistrictId groups
         data.insert(1, 'AvgDistSqmPrice', self.average_sqm_price_district)
         data = data.sort_values(by='DistrictId')
         data['AvgDistSqmPrice'] = data.groupby(
             'DistrictId')['AvgDistSqmPrice'].bfill().ffill()
 
+        # Change DistrictId and Id to object type (categorical features)
         data['DistrictId'] = data['DistrictId'].astype('object')
         data['Id'] = data['Id'].astype('object')
+
+        # Move price column to end
         data['Price'] = data.pop('Price')
 
         return data
@@ -221,6 +226,8 @@ pd.set_option('display.max_colwidth', None)
 pd.set_option('display.colheader_justify', 'center')
 print("\n", results)
 
+
+# Feature importances - not supported by some of the models used above
 # indices = np.argsort(model.feature_importances_)[::-1]
 
 # plt.figure(figsize=(20, 15))
